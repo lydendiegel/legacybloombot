@@ -58,7 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def worker(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.message.from_user.id
-    referral_link = f"https://t.me/{BOT_USERNAME}?start={user_id}"
+    referral_link = f"https://t.me/{LEGACYBLOOMBOT}?start={user_id}"
 
 
     await update.message.reply_text(
