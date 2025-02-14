@@ -8,8 +8,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Configuration
-GROUP_CHAT_ID = -1001234567890  # Replace with your group chat ID
-ADMIN_USER_ID = 123456789        # Replace with your user ID
+GROUP_CHAT_ID = -1002378426583  # Replace with your group chat ID
+ADMIN_USER_ID = 7620999875        # Replace with your user ID
 DATABASE = {}  # Simple in-memory storage (consider using a real database)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
